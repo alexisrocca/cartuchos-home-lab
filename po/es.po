@@ -904,3 +904,31 @@ msgstr "El catálogo del Home Lab contiene opciones de inicio no válidas."
 
 msgid "Could not retrieve the Home Lab catalog over SSH."
 msgstr "No se pudo consultar el catálogo del Home Lab por SSH."
+
+#: cartridges/remote_stream.py
+msgid "Could not contact Hermes to manage the game session."
+msgstr "No se pudo contactar a Hermes para gestionar la sesión del juego."
+
+#: cartridges/remote_stream.py
+msgid "Hermes rejected the game session request."
+msgstr "Hermes rechazó la solicitud de sesión del juego."
+
+#: cartridges/remote_stream.py
+msgid "Hermes returned an invalid game session response."
+msgstr "Hermes devolvió una respuesta de sesión de juego no válida."
+
+#: cartridges/remote_stream.py
+msgid "Hermes returned invalid game launch settings."
+msgstr "Hermes devolvió opciones de lanzamiento no válidas."
+
+#: cartridges/remote_stream.py
+msgid "Hermes did not acknowledge releasing the game session."
+msgstr "Hermes no confirmó que liberó la sesión del juego."
+
+#: cartridges/remote_stream.py
+msgid "Import the game again from the configured Home Lab."
+msgstr "Volvé a importar el juego desde el Home Lab configurado."
+
+#: cartridges/remote_stream.py
+msgid "Hermes returned an invalid game session ID."
+msgstr "Hermes devolvió un identificador de sesión no válido."

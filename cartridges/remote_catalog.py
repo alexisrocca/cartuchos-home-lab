@@ -1,7 +1,6 @@
 """Read the Home Lab catalog via SSH and merge it into the local library."""
 
 import base64
-import hashlib
 import json
 import logging
 import re
@@ -16,7 +15,7 @@ from PIL import Image
 
 from cartridges import shared
 from cartridges.game import Game
-from cartridges.remote_stream import host_command
+from cartridges.remote_stream import catalog_key, host_command
 
 SOURCE = "homelab"
 MAX_CATALOG_SIZE = 2 * 1024 * 1024
@@ -148,7 +147,7 @@ def merge_catalog(destination, items):
     count = 0
     library = list(shared.store)
     for item in items:
-        catalog_id = hashlib.sha256(f"{destination}\0{item.id}".encode()).hexdigest()
+        catalog_id = catalog_key(destination, item.id)
         game = next((existing for existing in library
                      if existing.remote_catalog_id == catalog_id and not existing.removed), None)
         if game is None:
@@ -162,6 +161,7 @@ def merge_catalog(destination, items):
         is_new = game is None
         details = {
             "remote_catalog_id": catalog_id,
+            "remote_catalog_game_id": item.id,
             "remote_app": item.app,
             "remote_selection": item.selection,
             "remote_status": item.status_channel,

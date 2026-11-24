@@ -47,6 +47,7 @@ class Game(Gtk.Box):
     hidden_game_options = Gtk.Template.Child()
 
     remote_catalog_id: str = ""
+    remote_catalog_game_id: str = ""
     remote_app: str = ""
     remote_selection: str = ""
     remote_status: str = ""

@@ -41,6 +41,7 @@ class FileManager(AsyncManager):
             "added",
             "executable",
             "remote_catalog_id",
+            "remote_catalog_game_id",
             "remote_app",
             "remote_selection",
             "remote_status",

@@ -1,10 +1,13 @@
 """Hestia transport for remote games. All child processes take argv arrays."""
+import hashlib
+import json
+import logging
 import os
 import re
 import shlex
 import subprocess
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from threading import Event
 from time import monotonic
@@ -23,6 +26,21 @@ STAGE_MESSAGES = {
     "Steam is processing the game shaders": "shaders",
     "Launcher sign-in required": "sign-in",
 }
+# Only explicit unsupported or unavailable replies allow a legacy fallback. Transport errors are
+# ambiguous because a reservation may already have been created remotely.
+SESSION_FALLBACK = {
+    3: "hermes-game-session unsupported",
+    127: "hermes-game-session unavailable",
+}
+SESSION_COMMAND = (
+    'if [ -x "$HOME/.local/bin/hermes-game-session" ]; then '
+    'exec "$HOME/.local/bin/hermes-game-session"; '
+    f"else printf '%s\\n' '{SESSION_FALLBACK[127]}'; exit 127; fi"
+)
+SELECTION = re.compile(r"[a-z][a-z0-9-]*:[a-zA-Z0-9._-]+")
+STATUS_CHANNEL = re.compile(r"[a-z][a-z0-9-]*")
+SESSION_ID = re.compile(r"[A-Za-z0-9._-]{1,128}")
+CATALOG_GAME_ID = re.compile(r"[a-zA-Z0-9._:-]{1,128}")
 SELECTION_COMMAND = (
     'set -eu; target="$HOME/.local/share/hermes-game-selection"; '
     'temp=$(mktemp "$target.XXXXXX"); trap \'rm -f "$temp"\' EXIT; '
@@ -51,6 +69,8 @@ class StreamSettings:
     selection: str
     status_channel: str
     relative_mouse: bool
+    catalog_id: str = ""
+    catalog_game_id: str = ""
 
     @classmethod
     def from_game(cls, game):
@@ -66,7 +86,12 @@ class StreamSettings:
             game.remote_app, game.name,
             "io.github.alexisrocca.CartuchosHomeLab.Game",
             game.remote_selection, game.remote_status, game.remote_relative_mouse,
+            getattr(game, "remote_catalog_id", ""), getattr(game, "remote_catalog_game_id", ""),
         )
+
+
+def catalog_key(destination, game_id):
+    return hashlib.sha256(f"{destination}\0{game_id}".encode()).hexdigest()
 
 
 def host_command(argv, environment=None):
@@ -136,33 +161,108 @@ class RemoteStream:
             if monotonic() >= deadline:
                 raise RuntimeError("The Hestia host did not become available in time.")
 
+    def ssh_command(self, command):
+        return [
+            "ssh", "-T", "-o", "BatchMode=yes", "-o", "ConnectTimeout=4",
+            "-o", "StrictHostKeyChecking=yes", "--", self.settings.ssh_host,
+            "bash -c " + shlex.quote(command),
+        ]
+
+    def session_request(self, action, **fields):
+        command, environment = host_command(self.ssh_command(SESSION_COMMAND))
+        request = json.dumps({"version": 1, "action": action, **fields}) + "\n"
+        try:
+            result = subprocess.run(command, env=environment, input=request, capture_output=True,
+                                    encoding="utf-8", errors="replace", timeout=10)
+        except (OSError, subprocess.SubprocessError) as error:
+            raise RuntimeError(_("Could not contact Hermes to manage the game session.")) from error
+        if (action == "reserve" and result.stdout.strip()
+                == SESSION_FALLBACK.get(result.returncode)):
+            return None
+        if result.returncode:
+            raise RuntimeError(result.stderr.strip()[:512]
+                               or _("Hermes rejected the game session request."))
+        try:
+            response = json.loads(result.stdout)
+        except (ValueError, RecursionError) as error:
+            raise RuntimeError(_("Hermes returned an invalid game session response.")) from error
+        if (not isinstance(response, dict) or type(response.get("version")) is not int
+                or response["version"] != 1):
+            raise RuntimeError(_("Hermes returned an invalid game session response."))
+        return response
+
+    def session_settings(self, response):
+        app = response.get("app")
+        selection = response.get("selection", "")
+        status = response.get("status_channel", "")
+        mouse = response.get("relative_mouse", self.settings.relative_mouse)
+        if (not isinstance(app, str) or not app.strip() or len(app) > 256 or not app.isprintable()
+                or not isinstance(selection, str) or (selection and not SELECTION.fullmatch(selection))
+                or not isinstance(status, str) or (status and not STATUS_CHANNEL.fullmatch(status))
+                or type(mouse) is not bool):
+            raise RuntimeError(_("Hermes returned invalid game launch settings."))
+        return replace(self.settings, app=app, selection=selection, status_channel=status,
+                       relative_mouse=mouse)
+
+    def release_session(self, session_id):
+        try:
+            response = self.session_request("release", session_id=session_id)
+            if response.get("released") is not True:
+                raise RuntimeError(_("Hermes did not acknowledge releasing the game session."))
+        except RuntimeError as error:
+            logging.warning("Could not release the Hermes game session: %s", error)
+
     def run(self, emit):
         config = self.settings
+        catalog_game_id = config.catalog_game_id
+        # Older imports stored a destination-scoped key but kept the Steam ID
+        # in the selection field. The matching key proves it is that entry.
+        if not catalog_game_id and config.catalog_id and config.selection.startswith("steam:"):
+            catalog_game_id = config.selection
         if not config.host or not config.client:
             raise RuntimeError("Configure the Hestia host and client in Preferences → Home Lab.")
         if not re.fullmatch(r"[\w.:-]+", config.host):
             raise RuntimeError("Enter a hostname or IP address without a URL or port.")
-        if config.status_channel and not re.fullmatch(r"[a-z][a-z0-9-]*", config.status_channel):
+        if config.status_channel and not STATUS_CHANNEL.fullmatch(config.status_channel):
             raise RuntimeError("Invalid launcher status channel.")
+        if (catalog_game_id or config.selection) and not re.fullmatch(
+            r"[a-zA-Z0-9_][a-zA-Z0-9_.@:-]{0,253}", config.ssh_host
+        ):
+            raise RuntimeError("Set the SSH destination in Home Lab preferences.")
+        if catalog_game_id and (
+            not CATALOG_GAME_ID.fullmatch(catalog_game_id)
+            or config.catalog_id != catalog_key(config.ssh_host, catalog_game_id)
+        ):
+            raise RuntimeError(_("Import the game again from the configured Home Lab."))
         self.wait_for_host(emit)
         if self.cancelled.is_set():
             return
-        if config.selection:
-            if not config.ssh_host or config.ssh_host.startswith("-"):
-                raise RuntimeError("Set the SSH destination in Home Lab preferences.")
-            if not re.fullmatch(r"[a-z][a-z0-9-]*:[a-zA-Z0-9._-]+", config.selection):
-                raise RuntimeError("Game selection must use provider:identifier.")
-            emit("select")
-            self.execute([
-                "ssh", "-T", "-o", "BatchMode=yes", "-o", "ConnectTimeout=4",
-                "-o", "StrictHostKeyChecking=yes", config.ssh_host,
-                "bash -c " + shlex.quote(SELECTION_COMMAND),
-            ], input_text=config.selection.replace(":", " ", 1) + "\n")
-        if not self.cancelled.is_set():
-            self.stream(emit)
 
-    def stream(self, emit):
-        config = self.settings
+        if catalog_game_id:
+            emit("select")
+            response = self.session_request("reserve", catalog_id=catalog_game_id)
+            if response is not None:
+                session_id = response.get("session_id")
+                if not isinstance(session_id, str) or not SESSION_ID.fullmatch(session_id):
+                    raise RuntimeError(_("Hermes returned an invalid game session ID."))
+                try:
+                    if not self.cancelled.is_set():
+                        self.stream(emit, self.session_settings(response))
+                finally:
+                    self.release_session(session_id)
+                return
+
+        if config.selection and not self.cancelled.is_set():
+            if not SELECTION.fullmatch(config.selection):
+                raise RuntimeError("Game selection must use provider:identifier.")
+            if not catalog_game_id:
+                emit("select")
+            self.execute(self.ssh_command(SELECTION_COMMAND),
+                         input_text=config.selection.replace(":", " ", 1) + "\n")
+        if not self.cancelled.is_set():
+            self.stream(emit, config)
+
+    def stream(self, emit, config):
         runtime = shared.data_dir / "hestia-sessions"
         runtime.mkdir(mode=0o700, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=runtime) as temp:
