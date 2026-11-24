@@ -191,7 +191,7 @@ class Importer(ErrorProducer):
         for game in shared.store:
             if game.removed:
                 continue
-            if game.source == "imported":
+            if game.source in {"imported", "homelab"}:
                 continue
             if (game.base_source in keys) and (
                 not shared.schema.get_boolean(game.base_source)

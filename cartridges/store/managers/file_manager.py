@@ -40,6 +40,7 @@ class FileManager(AsyncManager):
         attrs = (
             "added",
             "executable",
+            "remote_catalog_id",
             "remote_app",
             "remote_selection",
             "remote_status",

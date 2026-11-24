@@ -869,3 +869,38 @@ msgstr "Verifique su clave API en las preferencias"
 
 #~ msgid "gaming;launcher;steam;lutris;heroic;bottles;itch;"
 #~ msgstr "gaming;launcher;steam;lutris;heroic;bottles;itch;"
+
+msgid "Import from Home Lab"
+msgstr "Importar del Home Lab"
+
+msgid "Set the Home Lab SSH destination in Preferences."
+msgstr "Configurá el destino SSH del Home Lab en Preferencias."
+
+msgid "Retrieving games from the Home Lab…"
+msgstr "Consultando los juegos del Home Lab…"
+
+msgid "Home Lab catalog updated ({} game)."
+msgid_plural "Home Lab catalog updated ({} games)."
+msgstr[0] "Catálogo del Home Lab actualizado ({} juego)."
+msgstr[1] "Catálogo del Home Lab actualizado ({} juegos)."
+
+msgid "The Home Lab catalog is empty."
+msgstr "El catálogo del Home Lab está vacío."
+
+msgid "The Home Lab catalog is too large."
+msgstr "El catálogo del Home Lab supera el tamaño máximo."
+
+msgid "The Home Lab returned an invalid game catalog."
+msgstr "El Home Lab devolvió un catálogo de juegos no válido."
+
+msgid "The Home Lab returned an unsupported game catalog."
+msgstr "La versión del catálogo del Home Lab no es compatible."
+
+msgid "The Home Lab catalog contains an invalid game."
+msgstr "El catálogo del Home Lab contiene un juego no válido."
+
+msgid "The Home Lab catalog contains invalid launch settings."
+msgstr "El catálogo del Home Lab contiene opciones de inicio no válidas."
+
+msgid "Could not retrieve the Home Lab catalog over SSH."
+msgstr "No se pudo consultar el catálogo del Home Lab por SSH."

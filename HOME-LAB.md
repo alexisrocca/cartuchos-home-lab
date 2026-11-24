@@ -31,3 +31,12 @@ To build locally, use the GNOME 49 SDK and
 `flatpak-builder --user --repo=repo build-home-lab build-aux/flatpak/io.github.alexisrocca.CartuchosHomeLab.json`.
 Create the downloadable bundle with
 `flatpak build-bundle repo Cartuchos-Home-Lab-x86_64.flatpak io.github.alexisrocca.CartuchosHomeLab master`.
+
+## Import games from the Home Lab
+
+Install the read-only `hermes-game-catalog` exporter on the server with the
+same account that launches games. In Cartuchos set the SSH destination in
+**Preferences → Home Lab**, then choose **Import from Home Lab** in the
+library's add menu. The SSH host key must already be trusted. Importing keeps
+existing covers and preserves the last successful library when the server
+is offline.

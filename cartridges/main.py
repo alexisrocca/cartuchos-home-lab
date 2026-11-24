@@ -19,9 +19,11 @@
 
 import json
 import lzma
+import re
 import os
 import shlex
 import sys
+from threading import Thread
 from time import time
 from typing import Any, Optional
 from urllib.parse import quote
@@ -35,6 +37,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib, Gtk
 
 from cartridges import shared
+from cartridges.remote_catalog import fetch_catalog, merge_catalog
 from cartridges.remote_migration import migrate_library
 from cartridges.details_dialog import DetailsDialog
 from cartridges.game import Game
@@ -175,6 +178,7 @@ class CartridgesApplication(Adw.Application):
                 ("edit_game",),
                 ("add_game", ("<primary>n",)),
                 ("import", ("<primary>i",)),
+                ("import_home_lab",),
                 ("remove_game_details_view", ("Delete",)),
                 ("remove_game",),
                 ("igdb_search",),
@@ -265,6 +269,8 @@ class CartridgesApplication(Adw.Application):
             name = _("All Games")
         elif source_id == "imported":
             name = _("Added")
+        elif source_id == "homelab":
+            name = _("Home Lab")
         else:
             try:
                 name = globals()[f"{source_id.split('_')[0].title()}Source"].name
@@ -383,6 +389,44 @@ class CartridgesApplication(Adw.Application):
             shared.importer.add_source(RetroarchSource())
 
         shared.importer.run()
+
+    def on_import_home_lab_action(self, action, _parameter) -> None:
+        destination = shared.schema.get_string("remote-ssh-host").strip()
+        if not re.fullmatch(r"[a-zA-Z0-9_][a-zA-Z0-9_.@:-]{0,253}", destination):
+            self.show_catalog_notice(_("Set the Home Lab SSH destination in Preferences."))
+            return
+        action.set_enabled(False)
+        self.show_catalog_notice(_("Retrieving games from the Home Lab…"))
+        Thread(target=self.fetch_home_lab_catalog, args=(action, destination), daemon=True).start()
+
+    def fetch_home_lab_catalog(self, action, destination) -> None:
+        try:
+            entries = fetch_catalog(destination)
+        except (RuntimeError, ValueError) as error:
+            GLib.idle_add(self.finish_home_lab_import, action, destination, None, str(error))
+        else:
+            GLib.idle_add(self.finish_home_lab_import, action, destination, entries, None)
+
+    def finish_home_lab_import(self, action, destination, entries, error) -> None:
+        action.set_enabled(True)
+        if destination != shared.schema.get_string("remote-ssh-host").strip():
+            return
+        if error:
+            self.show_catalog_notice(error)
+            return
+        count = merge_catalog(destination, entries)
+        if count:
+            self.show_catalog_notice(ngettext(
+                "Home Lab catalog updated ({} game).",
+                "Home Lab catalog updated ({} games).", count,
+            ).format(count))
+        else:
+            self.show_catalog_notice(_("The Home Lab catalog is empty."))
+
+    def show_catalog_notice(self, message) -> None:
+        toast = Adw.Toast.new(message)
+        toast.set_use_markup(False)
+        shared.win.toast_overlay.add_toast(toast)
 
     def on_remove_game_action(self, *_args: Any) -> None:
         shared.win.active_game.remove_game()

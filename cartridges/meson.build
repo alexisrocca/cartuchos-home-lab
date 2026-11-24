@@ -23,6 +23,7 @@ install_data(
     'game.py',
     'game_cover.py',
     'remote_progress.py',
+    'remote_catalog.py',
     'remote_migration.py',
     'remote_stream.py',
     'remote_power.py',

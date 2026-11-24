@@ -148,6 +148,8 @@ class CartridgesWindow(Adw.ApplicationWindow):
                 Gtk.Image.new_from_icon_name(
                     "user-desktop-symbolic"
                     if (split_id := source_id.split("_")[0]) == "desktop"
+                    else "network-server-symbolic"
+                    if split_id == "homelab"
                     else f"{split_id}-source-symbolic"
                 )
             )
