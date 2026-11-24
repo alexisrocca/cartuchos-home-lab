@@ -16,9 +16,12 @@ Ordinary local games continue to use the executable field. Shared Hermes
 profiles can specify a game selection in `provider:identifier` form, the SSH
 destination, and an optional readiness executable. The wake command accepts
 an executable plus arguments, with shell-style quoting and no shell expansion.
-For the existing Home Lab, the Tuya extension can supply that optional wake
-command and the Gamescope setup can supply a readiness executable. Neither is
-required for regular Hestia applications on an already running server.
+To wake the server through Tuya, enter the API endpoint, device ID, switch
+code and credentials in **Preferences → Home Lab → Tuya power-on**. Credentials
+are stored in the desktop keyring. A wake command can be used for other power
+providers. The Gamescope setup can supply a readiness executable for advanced
+profiles. Regular Hestia applications on a running server require only Hestia
+and the server address.
 
 On first launch the fork copies the prototype or original Flatpak library if
 available and converts supported legacy launcher entries to remote games.

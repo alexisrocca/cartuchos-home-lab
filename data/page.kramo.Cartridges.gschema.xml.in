@@ -2,6 +2,10 @@
 <schemalist gettext-domain="cartridges">
 
   <schema id="@APP_ID@" path="@PREFIX@/">
+    <key name="remote-tuya-enabled" type="b"><default>false</default></key>
+    <key name="remote-tuya-endpoint" type="s"><default>''</default></key>
+    <key name="remote-tuya-device" type="s"><default>''</default></key>
+    <key name="remote-tuya-switch" type="s"><default>'switch_1'</default></key>
     <key name="remote-host" type="s"><default>''</default></key>
     <key name="remote-client" type="s"><default>'hestia-gnome'</default></key>
     <key name="remote-wake-command" type="s"><default>''</default></key>

@@ -24,7 +24,8 @@
     "--filesystem=xdg-data/flatpak/app:ro",
     "--filesystem=xdg-data/flatpak/exports:ro",
     "--filesystem=~/.var/app/page.kramo.Cartridges/data/cartridges:ro",
-    "--filesystem=~/.var/app/page.kramo.Cartridges/data/cartridges-home-lab:ro"
+    "--filesystem=~/.var/app/page.kramo.Cartridges/data/cartridges-home-lab:ro",
+    "--talk-name=org.freedesktop.secrets"
   ],
   "cleanup": [
     "/include",

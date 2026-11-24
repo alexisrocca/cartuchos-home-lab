@@ -29,6 +29,7 @@ from typing import Any, Callable, Optional
 from gi.repository import Adw, Gio, GLib, Gtk
 
 from cartridges import shared
+from cartridges.remote_power import save_credentials
 from cartridges.errors.friendly_error import FriendlyError
 from cartridges.game import Game
 from cartridges.importer.bottles_source import BottlesSource
@@ -124,6 +125,25 @@ class CartridgesPreferences(Adw.PreferencesDialog):
 
     is_open = False
 
+    def save_tuya(self, _row, client, secret):
+        schema = shared.schema
+        fields = (
+            schema.get_string("remote-tuya-endpoint").strip(),
+            schema.get_string("remote-tuya-device").strip(),
+            client.get_text().strip(), secret.get_text().strip(),
+        )
+        if not all(fields):
+            self.add_toast(Adw.Toast.new(_("Enter the endpoint, device ID and both credentials.")))
+            return
+        try:
+            save_credentials(*fields)
+        except (GLib.Error, RuntimeError) as error:
+            self.add_toast(Adw.Toast.new(str(error)))
+        else:
+            client.set_text("")
+            secret.set_text("")
+            self.add_toast(Adw.Toast.new(_("Tuya credentials saved.")))
+
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         page = Adw.PreferencesPage(title=_("Home Lab"), icon_name="network-server-symbolic")
@@ -139,6 +159,26 @@ class CartridgesPreferences(Adw.PreferencesDialog):
             shared.schema.bind(key, row, "text", Gio.SettingsBindFlags.DEFAULT)
             connection.add(row)
         page.add(connection)
+        power = Adw.PreferencesGroup(title=_("Tuya power-on"))
+        switch = Adw.SwitchRow(title=_("Turn on the server through Tuya"))
+        shared.schema.bind("remote-tuya-enabled", switch, "active", Gio.SettingsBindFlags.DEFAULT)
+        power.add(switch)
+        for key, title in (
+            ("remote-tuya-endpoint", _("Tuya HTTPS API endpoint")),
+            ("remote-tuya-device", _("Tuya device ID")),
+            ("remote-tuya-switch", _("Tuya switch code")),
+        ):
+            row = Adw.EntryRow(title=title)
+            shared.schema.bind(key, row, "text", Gio.SettingsBindFlags.DEFAULT)
+            power.add(row)
+        client = Adw.EntryRow(title=_("Tuya access ID"))
+        secret = Adw.PasswordEntryRow(title=_("Tuya access secret"))
+        power.add(client)
+        power.add(secret)
+        save = Adw.ButtonRow(title=_("Save credentials in the desktop keyring"))
+        save.connect("activated", self.save_tuya, client, secret)
+        power.add(save)
+        page.add(power)
         video = Adw.PreferencesGroup(title=_("Streaming"))
         for key, title, options in (
             ("remote-resolution", _("Resolution"), ["720", "1080", "1440", "4K"]),

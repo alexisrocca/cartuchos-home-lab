@@ -25,6 +25,7 @@ install_data(
     'remote_progress.py',
     'remote_migration.py',
     'remote_stream.py',
+    'remote_power.py',
     'home_lab_stages.py',
     configure_file(input: 'shared.py.in', output: 'shared.py', configuration: conf),
   ],

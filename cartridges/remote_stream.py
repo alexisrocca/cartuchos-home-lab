@@ -11,7 +11,10 @@ from time import monotonic
 from urllib.parse import urlunsplit
 from urllib.request import urlopen
 
+from gi.repository import GLib
+
 from cartridges import shared
+from cartridges.remote_power import TuyaPower
 
 STAGE_MESSAGES = {
     "Preparing session": "prepare",
@@ -34,6 +37,10 @@ class StreamSettings:
     wake_command: str
     ssh_host: str
     readiness_check: str
+    tuya_enabled: bool
+    tuya_endpoint: str
+    tuya_device: str
+    tuya_switch: str
     resolution: str
     fps: int
     bitrate: int
@@ -52,7 +59,9 @@ class StreamSettings:
         return cls(
             string("remote-host").strip(), string("remote-client").strip(),
             string("remote-wake-command").strip(), string("remote-ssh-host").strip(),
-            string("remote-readiness-check").strip(), string("remote-resolution"),
+            string("remote-readiness-check").strip(), shared.schema.get_boolean("remote-tuya-enabled"),
+            string("remote-tuya-endpoint").strip(), string("remote-tuya-device").strip(),
+            string("remote-tuya-switch").strip(), string("remote-resolution"),
             integer("remote-fps"), integer("remote-bitrate"), string("remote-codec"),
             game.remote_app, game.name,
             "io.github.alexisrocca.CartuchosHomeLab.Game",
@@ -99,14 +108,24 @@ class RemoteStream:
     def wait_for_host(self, emit):
         if self.ready() or self.cancelled.is_set():
             return
-        if not self.settings.wake_command:
-            raise RuntimeError("Hestia host is offline. Check the server or configure a wake command.")
-        try:
-            command = shlex.split(self.settings.wake_command)
-        except ValueError as error:
-            raise RuntimeError("The wake command has invalid quoting.") from error
-        emit("power-on")
-        self.execute(command, timeout=30)
+        config = self.settings
+        if config.tuya_enabled:
+            try:
+                TuyaPower(config.tuya_endpoint, config.tuya_device, config.tuya_switch).wake(
+                    emit, self.cancelled
+                )
+            except (GLib.Error, KeyError, ValueError) as error:
+                raise RuntimeError(_("Could not read Tuya power status.")) from error
+        elif config.wake_command:
+            try:
+                command = shlex.split(config.wake_command)
+            except ValueError as error:
+                raise RuntimeError(_("The wake command has invalid quoting.")) from error
+            command[0] = os.path.expanduser(command[0])
+            emit("power-on")
+            self.execute(command, timeout=30)
+        else:
+            raise RuntimeError(_("Hestia host is offline. Check the server or configure wake-up."))
         emit("boot")
         deadline = monotonic() + 150
         while not self.cancelled.wait(1):
