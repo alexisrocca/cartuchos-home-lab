@@ -121,6 +121,8 @@ class RemoteStream:
                 command = shlex.split(config.wake_command)
             except ValueError as error:
                 raise RuntimeError(_("The wake command has invalid quoting.")) from error
+            if not command:
+                raise RuntimeError(_("The wake command is empty."))
             command[0] = os.path.expanduser(command[0])
             emit("power-on")
             self.execute(command, timeout=30)

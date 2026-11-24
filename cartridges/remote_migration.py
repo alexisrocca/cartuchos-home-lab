@@ -7,7 +7,7 @@ from pathlib import Path
 from shutil import copytree
 from tempfile import TemporaryDirectory
 
-from gi.repository import Gio
+from gi.repository import GLib
 
 from cartridges import shared
 
@@ -19,9 +19,10 @@ def remote_fields(command):
         if "/" in desktop:
             return {}
         path = shared.host_data_dir / "applications" / (desktop + ".desktop")
-        entry = Gio.DesktopAppInfo.new_from_filename(str(path)) if path.is_file() else None
-        if entry:
-            argv = shlex.split(entry.get_string("Exec") or "")
+        if path.is_file():
+            entry = GLib.KeyFile()
+            entry.load_from_file(str(path), GLib.KeyFileFlags.NONE)
+            argv = shlex.split(entry.get_string("Desktop Entry", "Exec"))
     if argv[:2] == ["env", "HESTIA_FORCE_NORMAL=1"]:
         argv = argv[2:]
     if not argv or Path(argv[0]).name != "home-lab-stream":
@@ -57,7 +58,7 @@ def migrate_library():
                     if isinstance(data.get("executable"), str) and not data.get("remote_app"):
                         data.update(remote_fields(data["executable"]))
                     file.write_text(json.dumps(data, indent=4, ensure_ascii=False) + "\n")
-                except (argparse.ArgumentError, ValueError, OSError, TypeError):
+                except (argparse.ArgumentError, GLib.Error, ValueError, OSError, TypeError):
                     logging.warning("Could not migrate game %s", file.name)
             target.rename(shared.games_dir.parent)
         return
