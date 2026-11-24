@@ -126,6 +126,45 @@ class CartridgesPreferences(Adw.PreferencesDialog):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
+        page = Adw.PreferencesPage(title=_("Home Lab"), icon_name="network-server-symbolic")
+        connection = Adw.PreferencesGroup(title=_("Remote connection"))
+        for key, title in (
+            ("remote-host", _("Hestia server address")),
+            ("remote-client", _("Hestia executable on this computer")),
+            ("remote-wake-command", _("Optional wake command")),
+            ("remote-ssh-host", _("SSH destination for shared game profiles")),
+            ("remote-readiness-check", _("Optional game readiness executable")),
+        ):
+            row = Adw.EntryRow(title=title)
+            shared.schema.bind(key, row, "text", Gio.SettingsBindFlags.DEFAULT)
+            connection.add(row)
+        page.add(connection)
+        video = Adw.PreferencesGroup(title=_("Streaming"))
+        for key, title, options in (
+            ("remote-resolution", _("Resolution"), ["720", "1080", "1440", "4K"]),
+            ("remote-codec", _("Video codec"), ["auto", "H.264", "HEVC", "AV1"]),
+        ):
+            row = Adw.ComboRow(title=title, model=Gtk.StringList.new(options))
+            row.set_selected(options.index(shared.schema.get_string(key)))
+            row.connect("notify::selected", lambda widget, _, key=key, options=options:
+                        shared.schema.set_string(key, options[widget.get_selected()]))
+            video.add(row)
+        for key, title, minimum, maximum, step in (
+            ("remote-fps", _("Frames per second"), 30, 120, 1),
+            ("remote-bitrate", _("Bitrate (kbps)"), 1000, 150000, 1000),
+        ):
+            row = Adw.SpinRow.new_with_range(minimum, maximum, step)
+            row.set_title(title)
+            row.set_value(shared.schema.get_int(key))
+            row.connect("notify::value", lambda widget, _, key=key:
+                        shared.schema.set_int(key, round(widget.get_value())))
+            video.add(row)
+        fullscreen = Adw.SwitchRow(title=_("Open Cartridges in fullscreen"))
+        shared.schema.bind("remote-fullscreen", fullscreen, "active", Gio.SettingsBindFlags.DEFAULT)
+        video.add(fullscreen)
+        page.add(video)
+        self.add(page)
+
 
         # Make it so only one dialog can be open at a time
         self.__class__.is_open = True

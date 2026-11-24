@@ -35,6 +35,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib, Gtk
 
 from cartridges import shared
+from cartridges.remote_migration import migrate_library
 from cartridges.details_dialog import DetailsDialog
 from cartridges.game import Game
 from cartridges.importer.bottles_source import BottlesSource
@@ -73,6 +74,10 @@ class CartridgesApplication(Adw.Application):
     def __init__(self) -> None:
         shared.store = Store()
         super().__init__(application_id=shared.APP_ID)
+        fullscreen = Gio.SimpleAction.new("toggle-fullscreen", None)
+        fullscreen.connect("activate", self.toggle_fullscreen)
+        self.add_action(fullscreen)
+        self.set_accels_for_action("app.toggle-fullscreen", ["F11"])
 
         search = GLib.OptionEntry()
         search.long_name = "search"
@@ -104,6 +109,14 @@ class CartridgesApplication(Adw.Application):
 
             GLib.Thread.new(None, setup_app_delegate)
 
+    def toggle_fullscreen(self, _action, _parameter):
+        window = self.get_active_window()
+        if window:
+            if window.is_fullscreen():
+                window.unfullscreen()
+            else:
+                window.fullscreen()
+
     def do_activate(self) -> None:  # pylint: disable=arguments-differ
         """Called on app creation"""
 
@@ -122,6 +135,8 @@ class CartridgesApplication(Adw.Application):
         win = self.props.active_window  # pylint: disable=no-member
         if not win:
             shared.win = win = CartridgesWindow(application=self)
+            if shared.schema.get_boolean("remote-fullscreen"):
+                win.fullscreen()
 
         # Save window geometry
         shared.state_schema.bind(
@@ -135,6 +150,7 @@ class CartridgesApplication(Adw.Application):
         )
 
         # Load games from disk
+        migrate_library()
         shared.store.add_manager(FileManager(), False)
         shared.store.add_manager(DisplayManager())
         self.state = shared.AppState.LOAD_FROM_DISK

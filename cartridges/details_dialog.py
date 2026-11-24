@@ -88,6 +88,19 @@ class DetailsDialog(Adw.Dialog):
             self.set_title(_("Add New Game"))
             self.apply_button.set_label(_("Add"))
 
+        self.remote_app = Adw.EntryRow(title=_("Remote Hestia application"))
+        self.remote_selection = Adw.EntryRow(title=_("Optional remote game selection"))
+        self.remote_status = Adw.EntryRow(title=_("Optional launcher status channel"))
+        self.remote_relative_mouse = Adw.SwitchRow(title=_("Use relative mouse for this game"))
+        if game:
+            self.remote_app.set_text(game.remote_app)
+            self.remote_selection.set_text(game.remote_selection)
+            self.remote_status.set_text(game.remote_status)
+            self.remote_relative_mouse.set_active(game.remote_relative_mouse)
+        group = self.executable.get_ancestor(Adw.PreferencesGroup)
+        for row in (self.remote_app, self.remote_selection, self.remote_status, self.remote_relative_mouse):
+            group.add(row)
+
         image_filter = Gtk.FileFilter(name=_("Images"))
 
         # .palm and .pdf are write-only
@@ -172,6 +185,7 @@ class DetailsDialog(Adw.Dialog):
         final_name = self.name.get_text()
         final_developer = self.developer.get_text()
         final_executable = self.executable.get_text()
+        remote_app = self.remote_app.get_text().strip()
 
         if not self.game:
             if final_name == "":
@@ -180,7 +194,7 @@ class DetailsDialog(Adw.Dialog):
                 )
                 return
 
-            if final_executable == "":
+            if not final_executable and not remote_app:
                 create_dialog(
                     self, _("Couldn't Add Game"), _("Executable cannot be empty.")
                 )
@@ -222,7 +236,7 @@ class DetailsDialog(Adw.Dialog):
                 )
                 return
 
-            if final_executable == "":
+            if not final_executable and not remote_app:
                 create_dialog(
                     self,
                     _("Couldn't Apply Preferences"),
@@ -233,6 +247,10 @@ class DetailsDialog(Adw.Dialog):
         self.game.name = final_name
         self.game.developer = final_developer or None
         self.game.executable = final_executable
+        self.game.remote_app = remote_app
+        self.game.remote_selection = self.remote_selection.get_text().strip()
+        self.game.remote_status = self.remote_status.get_text().strip()
+        self.game.remote_relative_mouse = self.remote_relative_mouse.get_active()
 
         if self.game.game_id in shared.win.game_covers.keys():
             shared.win.game_covers[self.game.game_id].animation = None

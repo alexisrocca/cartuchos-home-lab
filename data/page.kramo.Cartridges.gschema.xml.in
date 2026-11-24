@@ -2,6 +2,16 @@
 <schemalist gettext-domain="cartridges">
 
   <schema id="@APP_ID@" path="@PREFIX@/">
+    <key name="remote-host" type="s"><default>''</default></key>
+    <key name="remote-client" type="s"><default>'hestia-gnome'</default></key>
+    <key name="remote-wake-command" type="s"><default>''</default></key>
+    <key name="remote-ssh-host" type="s"><default>''</default></key>
+    <key name="remote-readiness-check" type="s"><default>''</default></key>
+    <key name="remote-resolution" type="s"><default>'1080'</default></key>
+    <key name="remote-codec" type="s"><default>'HEVC'</default></key>
+    <key name="remote-fps" type="i"><default>60</default></key>
+    <key name="remote-bitrate" type="i"><default>28000</default></key>
+    <key name="remote-fullscreen" type="b"><default>true</default></key>
     <key name="auto-import" type="b">
         <default>false</default>
     </key>

@@ -23,6 +23,7 @@ from sys import platform
 from typing import Any, Optional
 
 from cartridges import shared
+from cartridges.remote_progress import LaunchProgress
 from cartridges.game import Game
 from cartridges.game_cover import GameCover
 from cartridges.utils.relative_date import relative_date
@@ -396,6 +397,9 @@ class CartridgesWindow(Adw.ApplicationWindow):
             self.set_focus(self.details_view_play_button)
 
         self.set_details_view_opacity()
+        if not hasattr(self, "remote_progress"):
+            self.remote_progress = LaunchProgress(self)
+        self.remote_progress.refresh()
 
     def set_details_view_opacity(self, *_args: Any) -> None:
         if self.navigation_view.get_visible_page() != self.details_page:

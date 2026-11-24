@@ -40,6 +40,10 @@ class FileManager(AsyncManager):
         attrs = (
             "added",
             "executable",
+            "remote_app",
+            "remote_selection",
+            "remote_status",
+            "remote_relative_mouse",
             "game_id",
             "source",
             "hidden",

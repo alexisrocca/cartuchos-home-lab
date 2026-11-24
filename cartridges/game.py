@@ -25,6 +25,7 @@ from typing import Any, Optional
 from gi.repository import Adw, GObject, Gtk
 
 from cartridges import shared
+from cartridges.remote_stream import StreamSettings
 from cartridges.game_cover import GameCover
 from cartridges.utils.run_executable import run_executable
 
@@ -44,6 +45,11 @@ class Game(Gtk.Box):
     menu_revealer = Gtk.Template.Child()
     game_options = Gtk.Template.Child()
     hidden_game_options = Gtk.Template.Child()
+
+    remote_app: str = ""
+    remote_selection: str = ""
+    remote_status: str = ""
+    remote_relative_mouse: bool = False
 
     loading: int = 0
     filtered: bool = False
@@ -112,6 +118,10 @@ class Game(Gtk.Box):
         shared.win.toast_overlay.add_toast(toast)
 
     def launch(self) -> None:
+        if self.remote_app:
+            shared.win.show_details_page(self)
+            shared.win.remote_progress.start(self, StreamSettings.from_game(self))
+            return
         self.last_played = int(time())
         self.save()
         self.update()
