@@ -155,7 +155,8 @@ class RemoteStream:
             emit("select")
             self.execute([
                 "ssh", "-T", "-o", "BatchMode=yes", "-o", "ConnectTimeout=4",
-                "-o", "StrictHostKeyChecking=yes", config.ssh_host, SELECTION_COMMAND,
+                "-o", "StrictHostKeyChecking=yes", config.ssh_host,
+                "bash -c " + shlex.quote(SELECTION_COMMAND),
             ], input_text=config.selection.replace(":", " ", 1) + "\n")
         if not self.cancelled.is_set():
             self.stream(emit)
