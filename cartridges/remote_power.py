@@ -32,7 +32,7 @@ def save_credentials(endpoint, device, client_id, secret):
 class TuyaPower:
     def __init__(self, endpoint, device, switch):
         url = urlsplit(endpoint)
-        if (url.scheme != "https" or not url.hostname or not url.hostname.endswith(".tuya.com")
+        if (url.scheme != "https" or not url.hostname or not url.hostname.endswith((".tuya.com", ".tuyaus.com", ".tuyaeu.com", ".tuyacn.com", ".tuyain.com"))
                 or url.username or url.password or url.path not in ("", "/")
                 or url.query or url.fragment):
             raise RuntimeError(_("Enter a Tuya HTTPS API endpoint."))
