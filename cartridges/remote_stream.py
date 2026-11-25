@@ -276,7 +276,8 @@ class RemoteStream:
                 environment["HESTIA_SSH_HOST"] = config.ssh_host
             if config.readiness_check and (config.selection or config.status_channel):
                 environment["HESTIA_GAME_READY_CHECK"] = os.path.expanduser(config.readiness_check)
-            if config.selection.startswith("steam:"):
+            is_steam = config.selection.startswith("steam:")
+            if is_steam:
                 environment["HESTIA_GAME_TARGET"] = config.selection.partition(":")[2]
             if config.status_channel:
                 environment["HESTIA_LAUNCHER_STATUS"] = config.status_channel
@@ -284,10 +285,12 @@ class RemoteStream:
                 os.path.expanduser(config.client), f"--{config.resolution}",
                 "--fps", str(config.fps), "--bitrate", str(config.bitrate),
                 "--video-codec", config.codec, "--no-hdr", "--display-mode",
-                "borderless", "--quit-after",
+                "windowed" if is_steam else "borderless", "--quit-after",
             ]
             if config.relative_mouse:
                 args.append("--no-absolute-mouse")
+            elif is_steam:
+                args.append("--absolute-mouse")
             args.extend(["stream", config.host, config.app])
             command, env = host_command(args, environment)
             emit("prepare")
